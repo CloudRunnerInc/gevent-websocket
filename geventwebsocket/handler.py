@@ -1,6 +1,7 @@
 import base64
 import hashlib
 
+import gevent
 from gevent.pywsgi import WSGIHandler
 from ._compat import PY3
 from .websocket import WebSocket, Stream
@@ -37,6 +38,19 @@ class WebSocketHandler(WSGIHandler):
         """
         Called when a websocket has been created successfully.
         """
+
+        def ping():
+            if self.websocket:
+                self.websocket.send_frame(
+                    '{"type": "data", "heartbeat": "don\'t close!"}',
+                    self.websocket.OPCODE_TEXT)
+
+        def heartbeat():
+            while True:
+                gevent.sleep(30)
+                ping()
+
+        gevent.Greenlet.spawn(heartbeat)
 
         if getattr(self, 'prevent_wsgi_call', False):
             return
